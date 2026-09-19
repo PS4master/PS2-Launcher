@@ -1,0 +1,34 @@
+name: Build PS2L.ELF
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ps2dev/ps2dev:latest
+    steps:
+      - name: Install tools
+        run: apk add --no-cache git python3 zip
+
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Fetch missing files from upstream OPL
+        run: |
+          git config --global --add safe.directory '*'
+          git clone --recursive --depth 1 --shallow-submodules https://github.com/ps2homebrew/Open-PS2-Loader.git /tmp/opl
+          mkdir -p modules/network
+          [ -d modules/network/lwNBD ] || cp -r /tmp/opl/modules/network/lwNBD modules/network/
+          [ -f src/lang_internal.c ] || cp /tmp/opl/src/lang_internal.c src/
+          [ -f include/lang_autogen.h ] || cp /tmp/opl/include/lang_autogen.h include/
+
+      - name: Build
+        run: make
+
+      - name: Upload ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS2L-ELF
+          path: PS2L.ELF
